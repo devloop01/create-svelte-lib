@@ -1,0 +1,24 @@
+{
+	"name": "create-svelte-lib-monorepo",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/devloop01/create-svelte-lib"
+	},
+	"scripts": {
+		"build": "pnpm -r --filter=./packages/* build",
+		"format": "pnpm -r format",
+		"lint": "pnpm -r lint",
+		"changeset": "changeset",
+		"changeset:publish": "changeset publish"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^2.26.2",
+		"@svitejs/changesets-changelog-github-compact": "^1.1.0",
+		"eslint": "^8.53.0",
+		"prettier": "^3.0.3",
+		"typescript": "^5.0.2"
+	}
+}
