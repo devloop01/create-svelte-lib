@@ -6,7 +6,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/devloop01/create-svelte-lib",
+		"url": "https://github.com/devloop01/packages",
 		"directory": "packages/create-svelte-lib"
 	},
 	"bin": "./dist/bin.js",
