@@ -6,5 +6,6 @@ export default defineConfig({
 	format: ['esm'],
 	clean: true,
 	splitting: false,
-	sourcemap: false
+	sourcemap: false,
+	publicDir: 'public'
 });
