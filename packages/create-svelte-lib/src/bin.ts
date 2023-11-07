@@ -97,9 +97,14 @@ const create = async () => {
 					required: false,
 					options: [
 						{
-							value: '@changesets/cli',
 							label: '@changesets/cli',
+							value: '@changesets/cli',
 							hint: 'Changesets setup for publishing packages'
+						},
+						{
+							label: 'tailwindcss',
+							value: 'tailwindcss',
+							hint: 'Tailwindcss setup for styling'
 						}
 					]
 				}),
@@ -169,23 +174,33 @@ const create = async () => {
 	const spinner = p.spinner();
 	spinner.start('Resolving package versions');
 
-	const devDependencies = ['@changesets/cli'];
+	type Deps = Record<string, { packages: string[] }>;
 
-	async function resolveDeps(deps: string[]) {
+	async function resolveDeps(deps: Deps) {
 		const resolvedDeps: Record<string, string> = {};
 
-		for (const dep of deps) {
-			if (options.extras.includes(dep)) {
-				const resolvedVersion = await resolvePackageVersion(dep);
-				resolvedDeps[dep] = resolvedVersion;
+		for (const dep of Object.entries(deps)) {
+			const [name, { packages }] = dep;
+			if (!options.extras.includes(name)) continue;
+			for (const pkg of packages) {
+				resolvedDeps[pkg] = await resolvePackageVersion(pkg);
 			}
 		}
 
 		return resolvedDeps;
 	}
 
+	const devDeps: Deps = {
+		'@changesets/cli': {
+			packages: ['@changesets/cli']
+		},
+		tailwindcss: {
+			packages: ['tailwindcss', 'postcss', 'autoprefixer']
+		}
+	};
+
 	const newPackageJson = {
-		devDependencies: await resolveDeps(devDependencies),
+		devDependencies: await resolveDeps(devDeps),
 		scripts: {}
 	};
 
@@ -206,18 +221,7 @@ const create = async () => {
 		await copy(path.join(templatesDir, 'javascript'), cwd);
 	}
 
-	if (options.extras.includes('@changesets/cli')) {
-		const spinner = p.spinner();
-		try {
-			spinner.start(`Initializing changesets`);
-			await execa('npx', ['changeset', 'init'], { cwd, stdio: 'ignore' });
-			spinner.stop(`Initialized changesets`);
-		} catch (error) {
-			spinner.stop(red('Failed to initialize changesets'));
-			p.note('npx changeset init', 'Initialize changesets manually.');
-		}
-	}
-
+	// Install Dependencies
 	if (options.install) {
 		const spinner = p.spinner();
 		try {
@@ -238,6 +242,35 @@ const create = async () => {
 		await execa('git', ['init'], { cwd, stdio: 'ignore' });
 		await execa('git', ['add', '-A'], { cwd, stdio: 'ignore' });
 		await execa('git', ['commit', '-m', 'Initial commit'], { cwd, stdio: 'ignore' });
+	}
+
+	if (options.extras.includes('@changesets/cli')) {
+		const spinner = p.spinner();
+		try {
+			spinner.start(`Initializing changesets`);
+			await execa('npx', ['changeset', 'init'], { cwd, stdio: 'ignore' });
+			await execa('git', ['add', '-A'], { cwd, stdio: 'ignore' });
+			await execa('git', ['commit', '-m', 'feat: added changeset'], { cwd, stdio: 'ignore' });
+			spinner.stop(`Initialized changesets`);
+		} catch (error) {
+			spinner.stop(red('Failed to initialize changesets'));
+			p.note('npx changeset init', 'Initialize changesets manually.');
+		}
+	}
+
+	if (options.extras.includes('tailwindcss')) {
+		const spinner = p.spinner();
+		try {
+			spinner.start(`Initializing tailwindcss`);
+			await execa('npx', ['tailwindcss', 'init', '-p'], { cwd, stdio: 'ignore' });
+			await copy(path.join(templatesDir, 'tailwind'), cwd);
+			await execa('git', ['add', '-A'], { cwd, stdio: 'ignore' });
+			await execa('git', ['commit', '-m', 'feat: added tailwindcss'], { cwd, stdio: 'ignore' });
+			spinner.stop(`Initialized tailwindcss`);
+		} catch (error) {
+			spinner.stop(red('Failed to initialize tailwindcss'));
+			p.note('npx tailwindcss init -p', 'Initialize tailwindcss manually.');
+		}
 	}
 
 	p.outro('Your project is ready!');
@@ -269,6 +302,16 @@ const create = async () => {
 	if (options.features.includes('vitest')) {
 		print(bold('✔ Vitest'));
 		print(cyan('  https://vitest.dev\n'));
+	}
+
+	if (options.extras.includes('@changesets/cli')) {
+		print(bold('✔ Changesets'));
+		print(cyan('  https://github.com/changesets/changesets\n'));
+	}
+
+	if (options.extras.includes('tailwindcss')) {
+		print(bold('✔ Tailwindcss'));
+		print(cyan('  https://tailwindcss.com/docs\n'));
 	}
 
 	if (options.git) {
