@@ -124,7 +124,7 @@ const create = async () => {
 			install: ({ results }) =>
 				p.confirm({
 					message: `Install dependencies using ${results.packageManager ?? 'npm'}?`,
-					initialValue: false
+					initialValue: true
 				})
 		},
 		{ onCancel: () => process.exit(1) }
