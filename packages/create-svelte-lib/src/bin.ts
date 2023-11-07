@@ -192,7 +192,7 @@ const create = async () => {
 
 	const devDeps: Deps = {
 		'@changesets/cli': {
-			packages: ['@changesets/cli']
+			packages: ['@changesets/cli', '@svitejs/changesets-changelog-github-compact']
 		},
 		tailwindcss: {
 			packages: ['tailwindcss', 'postcss', 'autoprefixer']
@@ -246,9 +246,11 @@ const create = async () => {
 
 	if (options.extras.includes('@changesets/cli')) {
 		const spinner = p.spinner();
+
 		try {
 			spinner.start(`Initializing changesets`);
 			await execa('npx', ['changeset', 'init'], { cwd, stdio: 'ignore' });
+			await copy(path.join(templatesDir, 'changesets'), cwd);
 			await execa('git', ['add', '-A'], { cwd, stdio: 'ignore' });
 			await execa('git', ['commit', '-m', 'feat: added changeset'], { cwd, stdio: 'ignore' });
 			spinner.stop(`Initialized changesets`);
