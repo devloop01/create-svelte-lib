@@ -10,6 +10,7 @@ import { bold, cyan, grey, red } from 'kleur/colors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { request } from 'undici';
 
 const print = console.log;
 
@@ -90,6 +91,19 @@ const create = async () => {
 					]
 				}),
 
+			extras: () =>
+				p.multiselect({
+					message: 'Select extras (use arrow keys/space bar)',
+					required: false,
+					options: [
+						{
+							value: '@changesets/cli',
+							label: '@changesets/cli',
+							hint: 'Changesets setup for publishing packages'
+						}
+					]
+				}),
+
 			git: () =>
 				p.confirm({
 					message: 'Initialize a git repository?',
@@ -118,6 +132,21 @@ const create = async () => {
 
 	const pkgManager = options.packageManager;
 
+	const resolvePackageVersion = async (packageName: string, range = 'latest') => {
+		try {
+			const response = await request(
+				`https://cdn.jsdelivr.net/npm/${packageName}@${range}/package.json`
+			);
+			const packageJson = (await response.body.json()) as { version: string };
+			return `^${packageJson.version}`;
+		} catch (error) {
+			print(
+				bold(red(`✘ Failed to resolve package version for ${packageName}, using ${range} instead`))
+			);
+			return range;
+		}
+	};
+
 	// prettier-ignore
 	const types = (options.types === 'null' ? null : options.types) as CreateSvelteKitOptions['types'];
 
@@ -140,8 +169,23 @@ const create = async () => {
 	const spinner = p.spinner();
 	spinner.start('Resolving package versions');
 
+	const devDependencies = ['@changesets/cli'];
+
+	async function resolveDeps(deps: string[]) {
+		const resolvedDeps: Record<string, string> = {};
+
+		for (const dep of deps) {
+			if (options.extras.includes(dep)) {
+				const resolvedVersion = await resolvePackageVersion(dep);
+				resolvedDeps[dep] = resolvedVersion;
+			}
+		}
+
+		return resolvedDeps;
+	}
+
 	const newPackageJson = {
-		devDependencies: {},
+		devDependencies: await resolveDeps(devDependencies),
 		scripts: {}
 	};
 
@@ -160,6 +204,18 @@ const create = async () => {
 	} else {
 		// handle javascript templates
 		await copy(path.join(templatesDir, 'javascript'), cwd);
+	}
+
+	if (options.extras.includes('@changesets/cli')) {
+		const spinner = p.spinner();
+		try {
+			spinner.start(`Initializing changesets`);
+			await execa('npx', ['changeset', 'init'], { cwd, stdio: 'ignore' });
+			spinner.stop(`Initialized changesets`);
+		} catch (error) {
+			spinner.stop(red('Failed to initialize changesets'));
+			p.note('npx changeset init', 'Initialize changesets manually.');
+		}
 	}
 
 	if (options.install) {
